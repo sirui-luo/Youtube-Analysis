@@ -74,11 +74,11 @@ def get_sheet_id(spreadsheet: dict, sheet_title: str) -> int:
     raise ValueError(f"Sheet '{sheet_title}' not found")
 
 
-def write_rows(service, spreadsheet_id: str, range_name: str, values: list[list]):
+def write_rows(service, spreadsheet_id: str, range_name: str, values: list[list], formula: bool = False):
     service.spreadsheets().values().update(
         spreadsheetId=spreadsheet_id,
         range=range_name,
-        valueInputOption="RAW",
+        valueInputOption="USER_ENTERED" if formula else "RAW",
         body={"values": values},
     ).execute()
 
@@ -218,18 +218,19 @@ def make_pie_chart(
 # ---------------------------------------------------------------------------
 
 def populate_top_videos(service, spreadsheet_id, sheet_id, analysis):
-    rows = [["Title", "Channel", "Views", "Likes", "Engagement Rate", "Format", "Published"]]
+    rows = [["Title", "Channel", "Views", "Engagement Rate", "Format", "Published"]]
     for v in analysis.get("top_videos_by_views", []):
+        video_url = f"https://www.youtube.com/watch?v={v['video_id']}"
+        channel_url = f"https://www.youtube.com/channel/{v.get('channel_id', '')}"
         rows.append([
-            v["title"],
-            v["channel_title"],
+            f'=HYPERLINK("{video_url}", "{v["title"].replace(chr(34), chr(39))}")',
+            f'=HYPERLINK("{channel_url}", "{v["channel_title"].replace(chr(34), chr(39))}")',
             v["view_count"],
-            "",
             v["engagement_rate"],
             v["format"],
             v["published_at"][:10],
         ])
-    write_rows(service, spreadsheet_id, "Top Videos!A1", rows)
+    write_rows(service, spreadsheet_id, "Top Videos!A1", rows, formula=True)
     log.info("  Top Videos tab written")
 
 
@@ -410,7 +411,7 @@ def main():
     service = build("sheets", "v4", credentials=creds)
 
     week_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    title = f"AI YouTube Report — Week of {week_str}"
+    title = f"Fashion & Beauty YouTube Report — Week of {week_str}"
 
     log.info(f"Creating spreadsheet: '{title}'")
     spreadsheet = create_spreadsheet(service, title)
