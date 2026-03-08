@@ -367,11 +367,14 @@ def build_slide_09_opportunities(service, pid, slide_id, analysis):
                          0.3, 0.9, 9.4, 0.4, font_size=12, color=TEXT_MUTED)
 
     if gaps:
-        for i, gap in enumerate(gaps):
-            y = 1.45 + i * 0.65
-            reqs += add_shape_rect(slide_id, 0.3, y, 0.5, 0.45, ACCENT, f"dot_{i}")
-            reqs += add_text_box(slide_id, gap.title(), 0.95, y + 0.04, 8.5, 0.45,
-                                 font_size=15, color=TEXT_DARK)
+        for i, gap in enumerate(gaps[:10]):
+            col = i % 2
+            row = i // 2
+            x = 0.3 + col * 4.8
+            y = 1.45 + row * 0.75
+            reqs += add_shape_rect(slide_id, x, y, 0.4, 0.4, ACCENT, f"dot_{i}")
+            reqs += add_text_box(slide_id, gap.title(), x + 0.55, y + 0.04, 3.9, 0.4,
+                                 font_size=14, color=TEXT_DARK)
     else:
         reqs += add_text_box(slide_id, "All tracked keywords have good coverage this week.",
                              0.5, 2.5, 9, 0.6, font_size=16, color=TEXT_MUTED, alignment="CENTER")
