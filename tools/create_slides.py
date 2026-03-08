@@ -242,10 +242,10 @@ def build_slide_01_cover(service, pid, slide_id, analysis, week_str):
     # Accent bar
     reqs += add_shape_rect(slide_id, 0, 0, 0.15, 5.625, ACCENT, "accent_bar")
     # Title
-    reqs += add_text_box(slide_id, "AI YouTube\nIndustry Report",
+    reqs += add_text_box(slide_id, "Fashion & Beauty\nYouTube Report",
                          0.4, 1.2, 7, 2, font_size=54, bold=True, color=WHITE, alignment="START")
     # Subtitle
-    reqs += add_text_box(slide_id, f"Week of {week_str}  •  AI & Automation Niche",
+    reqs += add_text_box(slide_id, f"Week of {week_str}  •  Fashion, Makeup & Beauty Niche",
                          0.4, 3.5, 8, 0.5, font_size=18, color={"red": 0.7, "green": 0.75, "blue": 0.85},
                          alignment="START")
     # Footer stat
@@ -292,7 +292,7 @@ def build_slide_03_top_videos(service, pid, slide_id, analysis):
     videos = analysis.get("top_videos_by_views", [])[:7]
     reqs = [set_slide_bg(slide_id, WHITE)]
     reqs += add_shape_rect(slide_id, 0, 0, 10, 0.9, DARK_BG)
-    reqs += add_text_box(slide_id, "Top Trending Videos This Week",
+    reqs += add_text_box(slide_id, "Top Trending Fashion & Beauty Videos This Week",
                          0.3, 0.1, 9.4, 0.7, font_size=24, bold=True, color=WHITE)
     reqs += add_text_box(slide_id, "Ranked by view count",
                          7.5, 0.25, 2, 0.4, font_size=11, color={"red": 0.6, "green": 0.65, "blue": 0.75})
@@ -387,7 +387,7 @@ def build_slide_10_recommendations(service, pid, slide_id, analysis):
     reqs += add_shape_rect(slide_id, 0, 0, 0.15, 5.625, ACCENT, "left_bar")
     reqs += add_text_box(slide_id, "Recommendations for Your Channel",
                          0.4, 0.15, 9.2, 0.7, font_size=24, bold=True, color=WHITE)
-    reqs += add_text_box(slide_id, "Based on this week's AI niche analysis",
+    reqs += add_text_box(slide_id, "Based on this week's fashion & beauty niche analysis",
                          0.4, 0.8, 9.2, 0.4, font_size=13,
                          color={"red": 0.55, "green": 0.6, "blue": 0.7})
 
@@ -441,7 +441,7 @@ def main(spreadsheet_id: str = None, chart_ids: dict = None):
                 log.warning(f"Could not delete previous presentation {prev_id}: {e}")
 
     week_str = datetime.now(timezone.utc).strftime("%B %d, %Y")
-    pres_title = f"AI YouTube Industry Report — Week of {week_str}"
+    pres_title = f"Fashion & Beauty YouTube Report — Week of {week_str}"
 
     log.info(f"Creating presentation: '{pres_title}'")
     presentation = slides_service.presentations().create(
@@ -468,11 +468,11 @@ def main(spreadsheet_id: str = None, chart_ids: dict = None):
 
     build_chart_slide(slides_service, pid, slide_ids[3],
                       "Trending Topics & Keywords",
-                      "Most frequently mentioned terms in AI video titles this week",
+                      "Most frequently mentioned terms in fashion & beauty video titles this week",
                       spreadsheet_id, chart_ids.get("keywords_bar"))
 
     build_chart_slide(slides_service, pid, slide_ids[4],
-                      "Top Channels in AI Niche",
+                      "Top Channels in Fashion & Beauty Niche",
                       "Ranked by total channel view count",
                       spreadsheet_id, chart_ids.get("channels_bar"))
 
@@ -483,12 +483,12 @@ def main(spreadsheet_id: str = None, chart_ids: dict = None):
 
     build_chart_slide(slides_service, pid, slide_ids[6],
                       "Content Format Breakdown",
-                      "Distribution of Shorts vs mid-form vs long-form AI content",
+                      "Distribution of Shorts vs mid-form vs long-form fashion & beauty content",
                       spreadsheet_id, chart_ids.get("format_pie"))
 
     build_chart_slide(slides_service, pid, slide_ids[7],
                       "Upload Timing Patterns",
-                      "Average views by day of week for AI content",
+                      "Average views by day of week for fashion & beauty content",
                       spreadsheet_id, chart_ids.get("timing_bar"))
 
     build_slide_09_opportunities(slides_service, pid, slide_ids[8], analysis)

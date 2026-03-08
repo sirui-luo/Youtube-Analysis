@@ -196,14 +196,14 @@ def generate_recommendations(
         avg = timing["day_avg_views"].get(day, 0)
         recs.append(
             f"Upload on {day} — it has the highest average view count "
-            f"({avg:,} views/video) among AI content this week."
+            f"({avg:,} views/video) among fashion & beauty content this week."
         )
 
     # Best upload hour
     if timing.get("best_hour") is not None:
         hour = timing["best_hour"]
         ampm = f"{hour % 12 or 12}{'AM' if hour < 12 else 'PM'} UTC"
-        recs.append(f"Schedule uploads around {ampm} — most AI videos are published then.")
+        recs.append(f"Schedule uploads around {ampm} — most fashion & beauty videos are published then.")
 
     # Shorts underrepresented
     short_pct = fmt_breakdown.get("short", {}).get("pct", 0)

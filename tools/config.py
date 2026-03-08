@@ -7,22 +7,22 @@ load_dotenv()
 # YouTube search parameters
 # ---------------------------------------------------------------------------
 KEYWORDS = [
-    "AI automation",
-    "artificial intelligence",
-    "ChatGPT",
-    "Claude AI",
-    "LLM",
-    "AI agents",
-    "AI tools",
-    "prompt engineering",
-    "AI for business",
-    "machine learning",
+    "fashion haul",
+    "outfit ideas",
+    "makeup tutorial",
+    "skincare routine",
+    "beauty tips",
+    "womens fashion",
+    "drugstore makeup",
+    "get ready with me",
+    "fashion trends 2025",
+    "affordable fashion",
 ]
 
 MAX_RESULTS_PER_KEYWORD = 10   # YouTube search.list max 50; keep low for quota
 LOOKBACK_DAYS = 7              # Only include videos published in the last N days
 TRENDING_REGION_CODE = "US"
-TRENDING_CATEGORY_ID = "28"    # YouTube category 28 = Science & Technology
+TRENDING_CATEGORY_ID = "26"    # YouTube category 26 = Howto & Style
 TRENDING_MAX_RESULTS = 50
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ MIN_GAP_THRESHOLD = 3          # Keywords with fewer results are flagged as gaps
 # ---------------------------------------------------------------------------
 REPORT_RECIPIENT_EMAIL = os.getenv("REPORT_RECIPIENT_EMAIL")
 REPORT_SENDER_EMAIL = os.getenv("REPORT_SENDER_EMAIL")
-REPORT_EMAIL_SUBJECT = os.getenv("REPORT_EMAIL_SUBJECT", "AI YouTube Industry Report")
+REPORT_EMAIL_SUBJECT = os.getenv("REPORT_EMAIL_SUBJECT", "Fashion & Beauty YouTube Industry Report")
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID") or None
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
