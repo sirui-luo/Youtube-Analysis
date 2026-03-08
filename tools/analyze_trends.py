@@ -38,6 +38,7 @@ def top_videos_by_views(videos: list[dict], n: int) -> list[dict]:
         {
             "video_id": v["video_id"],
             "title": v["title"],
+            "channel_id": v.get("channel_id", ""),
             "channel_title": v["channel_title"],
             "view_count": v["view_count"],
             "engagement_rate": v["engagement_rate"],
@@ -57,6 +58,7 @@ def top_videos_by_engagement(videos: list[dict], n: int) -> list[dict]:
         {
             "video_id": v["video_id"],
             "title": v["title"],
+            "channel_id": v.get("channel_id", ""),
             "channel_title": v["channel_title"],
             "view_count": v["view_count"],
             "engagement_rate": v["engagement_rate"],

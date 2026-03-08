@@ -112,6 +112,7 @@ def add_text_box(
     color: dict = None,
     alignment: str = "START",
     element_id: str = None,
+    url: str = None,
 ) -> list[dict]:
     if color is None:
         color = TEXT_DARK
@@ -162,6 +163,15 @@ def add_text_box(
             }
         },
     ]
+    if url:
+        requests.append({
+            "updateTextStyle": {
+                "objectId": obj_id,
+                "style": {"link": {"url": url}},
+                "textRange": {"type": "ALL"},
+                "fields": "link",
+            }
+        })
     return requests
 
 
@@ -306,10 +316,12 @@ def build_slide_03_top_videos(service, pid, slide_id, analysis):
         eng_str = f"{v['engagement_rate']:.1%}"
         reqs += add_text_box(slide_id, f"{i+1}.", 0.25, y + 0.05, 0.4, 0.45,
                              font_size=12, bold=True, color=ACCENT)
+        video_url = f"https://www.youtube.com/watch?v={v['video_id']}"
+        channel_url = f"https://www.youtube.com/channel/{v['channel_id']}" if v.get("channel_id") else None
         reqs += add_text_box(slide_id, v["title"][:65], 0.65, y + 0.05, 5.8, 0.45,
-                             font_size=11, color=TEXT_DARK)
+                             font_size=11, color=ACCENT, url=video_url)
         reqs += add_text_box(slide_id, v["channel_title"][:30], 6.45, y + 0.05, 1.8, 0.45,
-                             font_size=10, color=TEXT_MUTED)
+                             font_size=10, color=TEXT_MUTED, url=channel_url)
         reqs += add_text_box(slide_id, views_str, 8.25, y + 0.05, 1.0, 0.45,
                              font_size=11, bold=True, color=TEXT_DARK, alignment="END")
         reqs += add_text_box(slide_id, eng_str, 9.25, y + 0.05, 0.7, 0.45,
