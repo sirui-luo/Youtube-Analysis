@@ -304,7 +304,6 @@ def build_slide_03_top_videos(service, pid, slide_id, analysis):
             reqs += add_shape_rect(slide_id, 0.2, y, 9.6, 0.55, LIGHT_GREY, f"row_bg_{i}")
         views_str = f"{v['view_count']:,}"
         eng_str = f"{v['engagement_rate']:.1%}"
-        fmt_str = v["format"].upper()
         reqs += add_text_box(slide_id, f"{i+1}.", 0.25, y + 0.05, 0.4, 0.45,
                              font_size=12, bold=True, color=ACCENT)
         reqs += add_text_box(slide_id, v["title"][:65], 0.65, y + 0.05, 5.8, 0.45,
