@@ -7,22 +7,46 @@ load_dotenv()
 # YouTube search parameters
 # ---------------------------------------------------------------------------
 KEYWORDS = [
-    "fashion haul",
-    "outfit ideas",
-    "makeup tutorial",
-    "skincare routine",
-    "beauty tips",
-    "womens fashion",
-    "drugstore makeup",
-    "get ready with me",
-    "fashion trends 2025",
-    "affordable fashion",
+    "quiet luxury outfit",
+    "capsule wardrobe women",
+    "minimalist fashion outfit",
+    "clean girl aesthetic outfit",
+    "old money aesthetic fashion",
+    "outfit of the day women",
+    "affordable luxury fashion",
+    "get ready with me aesthetic",
+    "spring outfit ideas women 2025",
+    "natural makeup tutorial women",
+    "everyday makeup look",
+    "female lifestyle vlog",
+    "feminine style inspiration",
+    "french girl style outfit",
+    "elevated basics outfit",
+]
+
+# Seed channels: well-known creators in this niche.
+# Use YouTube channel handles (the @name part of their URL).
+# The tool will resolve these to channel IDs and fetch their recent uploads.
+SEED_CHANNEL_HANDLES = [
+    "via li",       # minimalist fashion / lifestyle
+    "mai pham",     # fashion / female lifestyle
+]
+
+# Title blocklist: videos whose titles contain any of these terms are discarded.
+TITLE_BLOCKLIST = [
+    "gaming", "minecraft", "fortnite", "cooking", "recipe", "baking",
+    "workout", "gym", "fitness", "bodybuilding", "weight loss",
+    "sports", "football", "basketball", "soccer",
+    "tech review", "unboxing tech", "iphone", "android",
+    "baby", "pregnancy", "kids", "children", "prank",
+    "horror", "scary", "asmr", "mukbang",
 ]
 
 MAX_RESULTS_PER_KEYWORD = 10   # YouTube search.list max 50; keep low for quota
+MAX_RESULTS_PER_SEED_CHANNEL = 10  # Recent videos to fetch per seed channel
 LOOKBACK_DAYS = 7              # Only include videos published in the last N days
 TRENDING_REGION_CODE = "US"
-TRENDING_CATEGORY_ID = "26"    # YouTube category 26 = Howto & Style
+TRENDING_CATEGORY_ID = "26"    # YouTube category 26 = Howto & Style (disabled — too noisy)
 TRENDING_MAX_RESULTS = 50
 
 # ---------------------------------------------------------------------------
