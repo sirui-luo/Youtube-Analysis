@@ -300,42 +300,63 @@ def build_slide_02_exec_summary(service, pid, slide_id, analysis):
 
 def build_slide_03_top_videos(service, pid, slide_id, analysis):
     videos = analysis.get("top_videos_by_views", [])[:7]
+
+    # Column layout (x positions and widths, total usable = 9.6 inches)
+    COL_NUM   = (0.20, 0.35)   # x, w
+    COL_TITLE = (0.60, 5.10)
+    COL_CHAN  = (5.80, 2.30)
+    COL_VIEW  = (8.20, 1.05)
+    COL_ENG   = (9.30, 0.55)
+
+    ROW_START   = 1.18   # first data row y
+    ROW_SPACING = 0.60   # per row
+    ROW_H       = 0.52   # row background height
+    TEXT_OFF    = 0.06   # text y offset inside row
+
     reqs = [set_slide_bg(slide_id, WHITE)]
-    reqs += add_shape_rect(slide_id, 0, 0, 10, 0.9, DARK_BG)
-    reqs += add_text_box(slide_id, "Top Trending Fashion & Beauty Videos This Week",
-                         0.3, 0.1, 9.4, 0.7, font_size=24, bold=True, color=WHITE)
-    reqs += add_text_box(slide_id, "Ranked by view count",
-                         7.5, 0.25, 2, 0.4, font_size=11, color={"red": 0.6, "green": 0.65, "blue": 0.75})
 
+    # Header band
+    reqs += add_shape_rect(slide_id, 0, 0, 10, 0.85, DARK_BG)
+    reqs += add_text_box(slide_id, "Top Trending Fashion & Beauty Videos",
+                         0.3, 0.08, 7.5, 0.68, font_size=22, bold=True, color=WHITE)
+
+    # Column header strip
+    reqs += add_shape_rect(slide_id, 0, 0.85, 10, 0.30, {"red": 0.92, "green": 0.93, "blue": 0.95})
+    reqs += add_text_box(slide_id, "TITLE", COL_TITLE[0], 0.87, COL_TITLE[1], 0.26,
+                         font_size=9, bold=True, color=TEXT_MUTED)
+    reqs += add_text_box(slide_id, "CHANNEL", COL_CHAN[0], 0.87, COL_CHAN[1], 0.26,
+                         font_size=9, bold=True, color=TEXT_MUTED)
+    reqs += add_text_box(slide_id, "VIEWS", COL_VIEW[0], 0.87, COL_VIEW[1], 0.26,
+                         font_size=9, bold=True, color=TEXT_MUTED, alignment="END")
+    reqs += add_text_box(slide_id, "ENG.", COL_ENG[0], 0.87, COL_ENG[1], 0.26,
+                         font_size=9, bold=True, color=TEXT_MUTED, alignment="END")
+
+    # Data rows
     for i, v in enumerate(videos):
-        y = 1.0 + i * 0.6
-        # Row bg (alternating)
+        y = ROW_START + i * ROW_SPACING
         if i % 2 == 0:
-            reqs += add_shape_rect(slide_id, 0.2, y, 9.6, 0.55, LIGHT_GREY, f"row_bg_{i}")
+            reqs += add_shape_rect(slide_id, 0.15, y, 9.7, ROW_H,
+                                   LIGHT_GREY, f"row_bg_{i}")
         views_str = f"{v['view_count']:,}"
-        eng_str = f"{v['engagement_rate']:.1%}"
-        reqs += add_text_box(slide_id, f"{i+1}.", 0.25, y + 0.05, 0.4, 0.45,
-                             font_size=12, bold=True, color=ACCENT)
-        video_url = f"https://www.youtube.com/watch?v={v['video_id']}"
+        eng_str   = f"{v['engagement_rate']:.1%}"
+        video_url   = f"https://www.youtube.com/watch?v={v['video_id']}"
         channel_url = f"https://www.youtube.com/channel/{v['channel_id']}" if v.get("channel_id") else None
-        reqs += add_text_box(slide_id, v["title"][:65], 0.65, y + 0.05, 5.8, 0.45,
-                             font_size=11, color=ACCENT, url=video_url)
-        reqs += add_text_box(slide_id, v["channel_title"][:30], 6.45, y + 0.05, 1.8, 0.45,
-                             font_size=10, color=TEXT_MUTED, url=channel_url)
-        reqs += add_text_box(slide_id, views_str, 8.25, y + 0.05, 1.0, 0.45,
-                             font_size=11, bold=True, color=TEXT_DARK, alignment="END")
-        reqs += add_text_box(slide_id, eng_str, 9.25, y + 0.05, 0.7, 0.45,
-                             font_size=10, color=ACCENT, alignment="END")
 
-    # Header row
-    reqs += add_text_box(slide_id, "Title", 0.65, 0.9, 5.8, 0.4, font_size=10,
-                         bold=True, color=TEXT_MUTED)
-    reqs += add_text_box(slide_id, "Channel", 6.45, 0.9, 1.8, 0.4, font_size=10,
-                         bold=True, color=TEXT_MUTED)
-    reqs += add_text_box(slide_id, "Views", 8.25, 0.9, 1.0, 0.4, font_size=10,
-                         bold=True, color=TEXT_MUTED, alignment="END")
-    reqs += add_text_box(slide_id, "Eng.", 9.25, 0.9, 0.7, 0.4, font_size=10,
-                         bold=True, color=TEXT_MUTED, alignment="END")
+        reqs += add_text_box(slide_id, f"{i+1}", COL_NUM[0], y + TEXT_OFF,
+                             COL_NUM[1], ROW_H - TEXT_OFF,
+                             font_size=11, bold=True, color=ACCENT, alignment="CENTER")
+        reqs += add_text_box(slide_id, v["title"][:58], COL_TITLE[0], y + TEXT_OFF,
+                             COL_TITLE[1], ROW_H - TEXT_OFF,
+                             font_size=11, color=ACCENT, url=video_url)
+        reqs += add_text_box(slide_id, v["channel_title"][:28], COL_CHAN[0], y + TEXT_OFF,
+                             COL_CHAN[1], ROW_H - TEXT_OFF,
+                             font_size=10, color=TEXT_MUTED, url=channel_url)
+        reqs += add_text_box(slide_id, views_str, COL_VIEW[0], y + TEXT_OFF,
+                             COL_VIEW[1], ROW_H - TEXT_OFF,
+                             font_size=11, bold=True, color=TEXT_DARK, alignment="END")
+        reqs += add_text_box(slide_id, eng_str, COL_ENG[0], y + TEXT_OFF,
+                             COL_ENG[1], ROW_H - TEXT_OFF,
+                             font_size=10, color=ACCENT, alignment="END")
 
     batch_update(service, pid, reqs)
     log.info("  Slide 3: Top Videos")

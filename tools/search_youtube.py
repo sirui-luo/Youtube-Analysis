@@ -132,8 +132,12 @@ def deduplicate(videos: list[dict]) -> list[dict]:
     return list(seen.values())
 
 
-def main():
-    os.makedirs(config.TMP_DIR, exist_ok=True)
+def main(keywords=None, work_dir=None):
+    _keywords = keywords or config.KEYWORDS
+    _work_dir = work_dir or config.TMP_DIR
+    _output_path = os.path.join(_work_dir, "videos_raw.json")
+
+    os.makedirs(_work_dir, exist_ok=True)
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=config.LOOKBACK_DAYS)
     published_after = cutoff.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -145,12 +149,12 @@ def main():
     all_videos = []
 
     # Keyword search
-    for keyword in config.KEYWORDS:
+    for keyword in _keywords:
         results = search_by_keyword(youtube, keyword, published_after)
         all_videos.extend(results)
 
-    # Seed channel fetch
-    if config.SEED_CHANNEL_HANDLES:
+    # Seed channel fetch (only when using default config, not custom keywords)
+    if keywords is None and config.SEED_CHANNEL_HANDLES:
         log.info("Fetching seed channel videos...")
         for handle in config.SEED_CHANNEL_HANDLES:
             channel_id = resolve_channel_id(youtube, handle)
@@ -179,10 +183,10 @@ def main():
         "videos": unique_videos,
     }
 
-    with open(config.VIDEOS_RAW_PATH, "w") as f:
+    with open(_output_path, "w") as f:
         json.dump(output, f, indent=2)
 
-    log.info(f"Saved to {config.VIDEOS_RAW_PATH}")
+    log.info(f"Saved to {_output_path}")
     return output
 
 

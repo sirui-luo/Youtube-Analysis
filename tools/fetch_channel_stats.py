@@ -77,13 +77,17 @@ def parse_channel_item(item: dict, video_counts: dict) -> dict:
     }
 
 
-def main():
-    if not os.path.exists(config.VIDEO_DETAILS_PATH):
+def main(work_dir=None):
+    _work_dir = work_dir or config.TMP_DIR
+    _input_path = os.path.join(_work_dir, "video_details.json")
+    _output_path = os.path.join(_work_dir, "channel_stats.json")
+
+    if not os.path.exists(_input_path):
         raise FileNotFoundError(
-            f"Missing {config.VIDEO_DETAILS_PATH} — run fetch_video_details.py first"
+            f"Missing {_input_path} — run fetch_video_details.py first"
         )
 
-    with open(config.VIDEO_DETAILS_PATH) as f:
+    with open(_input_path) as f:
         data = json.load(f)
 
     videos = data["videos"]
@@ -116,10 +120,10 @@ def main():
         "channels": channel_stats,
     }
 
-    with open(config.CHANNEL_STATS_PATH, "w") as f:
+    with open(_output_path, "w") as f:
         json.dump(output, f, indent=2)
 
-    log.info(f"Saved to {config.CHANNEL_STATS_PATH}")
+    log.info(f"Saved to {_output_path}")
     return output
 
 

@@ -23,6 +23,8 @@ import analyze_trends
 import write_to_sheets
 import create_slides
 import send_email
+import fetch_video_comments
+import write_to_notion
 
 
 def setup_logging():
@@ -122,6 +124,12 @@ def main():
         sys.exit(1)
 
     try:
+        run_step(log, "5b. Fetch Video Comments", fetch_video_comments.main)
+    except Exception as e:
+        log.error(f"Step 5b failed: {e}", exc_info=True)
+        sys.exit(1)
+
+    try:
         slides_result = run_step(
             log, "6. Create Google Slides", create_slides.main,
             spreadsheet_id=sheets_result["spreadsheet_id"],
@@ -143,6 +151,11 @@ def main():
         )
     except Exception as e:
         log.warning(f"Step 7 (email) failed — report still available via URLs below: {e}")
+
+    try:
+        run_step(log, "8. Write to Notion", write_to_notion.main)
+    except Exception as e:
+        log.warning(f"Step 8 (Notion) failed — check NOTION_API_KEY and NOTION_DATABASE_ID in .env: {e}")
 
     total_elapsed = round(time.time() - total_start, 1)
 

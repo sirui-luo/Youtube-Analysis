@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Report — YouTube Trend Analyzer</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="report-page">
+
+  <header class="report-header">
+    <div class="header-inner">
+      <a href="/" class="back-link">← New Analysis</a>
+      <div class="header-title">
+        <span class="logo-sm">▶</span>
+        <h1 id="reportTitle">Loading report...</h1>
+      </div>
+      <div class="header-right">
+        <span id="reportDate" class="report-date"></span>
+        <button id="saveNicheBtn" class="save-niche-btn hidden" onclick="saveNiche()">＋ Save Niche</button>
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+      </div>
+    </div>
+  </header>
+
+  <div id="loadingState" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading results...</p>
+  </div>
+
+  <main id="reportContent" class="report-content hidden">
+
+    <!-- KPI Summary Bar -->
+    <section class="kpi-bar">
+      <div class="kpi-card">
+        <span class="kpi-value" id="kpiVideos">—</span>
+        <span class="kpi-label">Videos Analyzed</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-value" id="kpiChannels">—</span>
+        <span class="kpi-label">Channels Found</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-value" id="kpiEngagement">—</span>
+        <span class="kpi-label">Avg Engagement</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-value" id="kpiTopTopic">—</span>
+        <span class="kpi-label">Top Trending Topic</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-value" id="kpiAvgLength">—</span>
+        <span class="kpi-label">Median Video Length</span>
+      </div>
+    </section>
+
+    <div class="report-grid">
+
+      <!-- Top Videos -->
+      <section class="card full-width">
+        <h2 class="card-title">Top Videos This Week</h2>
+        <div id="topVideosList" class="videos-list"></div>
+      </section>
+
+      <!-- Search Keywords Used -->
+      <section class="card full-width">
+        <h2 class="card-title">Keywords Searched</h2>
+        <p class="card-desc">These are the YouTube search queries generated for your topic.</p>
+        <div id="searchKeywordsList" class="search-keywords"></div>
+      </section>
+
+      <!-- Trending Keywords -->
+      <section class="card">
+        <h2 class="card-title">Trending Keywords</h2>
+        <div id="keywordsList" class="keywords-list"></div>
+      </section>
+
+      <!-- Content Gaps -->
+      <section class="card">
+        <h2 class="card-title">Content Gaps <span class="badge">Opportunity</span></h2>
+        <p class="card-desc">Topics with low coverage this week — less competition for you.</p>
+        <ul id="gapsList" class="gaps-list"></ul>
+      </section>
+
+      <!-- Title Formulas -->
+      <section class="card full-width">
+        <h2 class="card-title">Title Formulas That Work</h2>
+        <p class="card-desc">Hook types used by top-performing videos this week, ranked by average views.</p>
+        <div id="titleFormulasList" class="title-formulas-grid"></div>
+        <div id="titleSuggestionsWrap" class="title-suggestions-wrap hidden">
+          <h3 class="title-suggestions-heading">Suggested Titles for You</h3>
+          <div id="titleSuggestionsList" class="title-suggestions-list"></div>
+        </div>
+      </section>
+
+      <!-- Rising Channels -->
+      <section class="card full-width">
+        <h2 class="card-title">Rising Channels <span class="badge">Opportunity</span></h2>
+        <p class="card-desc">Small channels getting outsized views this week — proof that new creators can break through in this niche.</p>
+        <div id="risingChannelsList" class="rising-channels-list"></div>
+      </section>
+
+      <!-- Recommendations -->
+      <section class="card full-width">
+        <h2 class="card-title">Recommendations</h2>
+        <ol id="recsList" class="recs-list"></ol>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    const JOB_ID = "{{ job_id }}";
+    const NICHE_ID = "{{ niche_id | default('') }}";
+    const TOPIC = "{{ topic }}";
+
+    async function loadReport() {
+      if (NICHE_ID) {
+        const res = await fetch(`/niches/${NICHE_ID}/result`);
+        if (!res.ok) {
+          document.getElementById("loadingState").innerHTML =
+            `<p style="color:#ef4444;">Failed to load niche data.</p><a href="/dashboard">Back to Dashboard</a>`;
+          return;
+        }
+        const data = await res.json();
+        renderReport(data);
+        return;
+      }
+
+      const res = await fetch(`/results/${JOB_ID}`);
+      const job = await res.json();
+
+      if (job.error || job.status === "error") {
+        document.getElementById("loadingState").innerHTML =
+          `<p style="color:#ef4444;">Error: ${job.error || "Unknown error"}</p><a href="/">Try again</a>`;
+        return;
+      }
+
+      if (job.status !== "done" || !job.result) {
+        // Still running — shouldn't normally land here, but just in case
+        setTimeout(loadReport, 2000);
+        return;
+      }
+
+      renderReport(job.result);
+    }
+
+    function renderReport(data) {
+      const summary = data.summary || {};
+
+      // Header
+      document.getElementById("reportTitle").textContent = `"${TOPIC}"`;
+      document.getElementById("reportDate").textContent = `Week of ${(summary.date_range || "").split(" to ")[0] || ""}`;
+
+      // KPIs
+      document.getElementById("kpiVideos").textContent = (summary.total_videos_analyzed || 0).toLocaleString();
+      document.getElementById("kpiChannels").textContent = (summary.total_channels_found || 0).toLocaleString();
+      document.getElementById("kpiEngagement").textContent =
+        ((summary.avg_engagement_rate || 0) * 100).toFixed(2) + "%";
+      document.getElementById("kpiTopTopic").textContent = summary.top_topic || "—";
+      document.getElementById("kpiAvgLength").textContent = fmtDuration(summary.median_video_length_seconds);
+
+      // Top Videos
+      const topVideos = data.top_videos_by_views || [];
+      const videosList = document.getElementById("topVideosList");
+      if (topVideos.length === 0) {
+        videosList.innerHTML = "<p class='empty'>No videos found.</p>";
+      } else {
+        videosList.innerHTML = topVideos.slice(0, 10).map((v, i) => {
+          const hasExtra = v.description || (v.comments && v.comments.length > 0);
+          const desc = v.description ? v.description.slice(0, 300) + (v.description.length > 300 ? "…" : "") : "";
+          const comments = (v.comments || []).map(c => `<li class="dropdown-comment">${escHtml(c)}</li>`).join("");
+          return `
+          <div class="video-item">
+            <div class="video-row" onclick="toggleDropdown('vd-${i}', event)">
+              <input type="checkbox" class="video-select-cb" data-title="${escHtml(v.title)}" data-description="${escHtml((v.description || '').slice(0, 300))}" data-thumbnail="${escHtml(v.thumbnail_url || '')}" onclick="event.stopPropagation(); updateCreateBar()" />
+              <span class="video-rank">${i + 1}</span>
+              ${v.thumbnail_url ? `<img class="video-thumb" src="${v.thumbnail_url}" alt="" loading="lazy" />` : ""}
+              <div class="video-info">
+                <div class="video-title">${escHtml(v.title)}</div>
+                <div class="video-meta">
+                  <span>${escHtml(v.channel_title)}</span>
+                  <span class="dot">·</span>
+                  <span>${fmtViews(v.view_count)} views</span>
+                  <span class="dot">·</span>
+                  <span>${((v.engagement_rate || 0) * 100).toFixed(2)}% engagement</span>
+                  <span class="format-badge ${v.format}">${v.format}</span>
+                </div>
+              </div>
+              <div class="video-row-actions">
+                <a class="ext-icon" href="https://youtube.com/watch?v=${v.video_id}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a>
+                ${hasExtra ? `<span class="dropdown-toggle" id="toggle-vd-${i}">▾</span>` : ""}
+              </div>
+            </div>
+            ${hasExtra ? `
+            <div class="video-dropdown hidden" id="vd-${i}">
+              ${desc ? `<div class="dropdown-section"><div class="dropdown-label">Description</div><p class="dropdown-desc">${escHtml(desc)}</p></div>` : ""}
+              ${comments ? `<div class="dropdown-section"><div class="dropdown-label">Top Comments</div><ul class="dropdown-comments">${comments}</ul></div>` : ""}
+            </div>` : ""}
+          </div>`;
+        }).join("");
+      }
+
+      // Search Keywords Used
+      const searchKeywords = data.search_keywords || [];
+      document.getElementById("searchKeywordsList").innerHTML =
+        searchKeywords.map(k => `<span class="search-kw-tag">${escHtml(k)}</span>`).join("");
+
+      // Trending Keywords
+      const keywords = data.trending_keywords || [];
+      const kwList = document.getElementById("keywordsList");
+      const maxCount = keywords[0]?.count || 1;
+      kwList.innerHTML = keywords.slice(0, 12).map(kw => `
+        <div class="kw-row">
+          <span class="kw-term">${escHtml(kw.term)}</span>
+          <div class="kw-bar-wrap">
+            <div class="kw-bar" style="width:${Math.round(kw.count / maxCount * 100)}%"></div>
+          </div>
+          <span class="kw-count">${kw.count}</span>
+        </div>
+      `).join("");
+
+      // Content Gaps
+      const gaps = data.content_gaps || [];
+      const gapsList = document.getElementById("gapsList");
+      if (gaps.length === 0) {
+        gapsList.innerHTML = "<li class='empty'>No obvious gaps found this week.</li>";
+      } else {
+        gapsList.innerHTML = gaps.map(g => `<li class="gap-item">🔓 ${escHtml(g)}</li>`).join("");
+      }
+
+      // Recommendations
+      const recs = data.recommendations || [];
+      const recsList = document.getElementById("recsList");
+      if (recs.length === 0) {
+        recsList.innerHTML = "<li class='empty'>No recommendations generated.</li>";
+      } else {
+        recsList.innerHTML = recs.map(r => `<li class="rec-item">${escHtml(r)}</li>`).join("");
+      }
+
+      // Title Formulas
+      const formulas = data.title_formulas || [];
+      const formulasEl = document.getElementById("titleFormulasList");
+      if (formulas.length === 0) {
+        formulasEl.innerHTML = "<p class='empty'>No formula data available — run a fresh analysis.</p>";
+      } else {
+        formulasEl.innerHTML = formulas.map(f => `
+          <div class="formula-card">
+            <div class="formula-card-top">
+              <span class="formula-hook-badge">${escHtml(f.hook_type)}</span>
+              <span class="formula-count">${f.count} video${f.count !== 1 ? "s" : ""}</span>
+            </div>
+            <div class="formula-template">${escHtml(f.template_hint)}</div>
+            <div class="formula-stats">
+              <span>${fmtViews(f.avg_views)} avg views</span>
+              <span class="dot">·</span>
+              <span>${((f.avg_engagement || 0) * 100).toFixed(2)}% avg eng</span>
+            </div>
+            <div class="formula-example">
+              <span class="formula-example-label">Example</span>
+              <a class="formula-example-title" href="https://youtube.com/watch?v=${escHtml(f.example_video_id)}" target="_blank" rel="noopener">
+                ${escHtml(f.example_title)} ↗
+              </a>
+              <span class="formula-example-views">${fmtViews(f.example_views)} views</span>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      // Title Suggestions
+      const suggestions = data.title_suggestions || [];
+      const suggestionsWrap = document.getElementById("titleSuggestionsWrap");
+      const suggestionsList = document.getElementById("titleSuggestionsList");
+      if (suggestions.length > 0) {
+        suggestionsList.innerHTML = suggestions.map((title, i) => `
+          <div class="title-suggestion-row" data-title="${escHtml(title)}">
+            <span class="title-suggestion-num">${i + 1}</span>
+            <span class="title-suggestion-text">${escHtml(title)}</span>
+            <button class="copy-btn" onclick="copySuggestion(this, ${i})">Copy</button>
+            <span class="suggestion-copied hidden" id="sc-${i}">Copied!</span>
+          </div>
+        `).join("");
+        suggestionsWrap.classList.remove("hidden");
+      }
+
+      // Rising Channels
+      const rising = data.rising_channels || [];
+      const risingEl = document.getElementById("risingChannelsList");
+      if (rising.length === 0) {
+        risingEl.innerHTML = "<p class='empty'>No rising channel data available.</p>";
+      } else {
+        risingEl.innerHTML = rising.map(c => {
+          const ratio = c.view_to_sub_ratio;
+          const ratioLabel = ratio >= 1 ? `${ratio.toFixed(1)}×` : `${(ratio * 100).toFixed(0)}%`;
+          return `
+          <div class="rising-channel-row">
+            <div class="rising-channel-info">
+              <span class="rising-channel-name">${escHtml(c.channel_name)}</span>
+              <span class="rising-channel-meta">${fmtViews(c.subscriber_count)} subs · ${fmtViews(c.views_this_week)} views this week</span>
+            </div>
+            <span class="rising-ratio-badge">${ratioLabel} view/sub</span>
+          </div>`;
+        }).join("");
+      }
+
+      // Show content
+      document.getElementById("loadingState").classList.add("hidden");
+      document.getElementById("reportContent").classList.remove("hidden");
+
+      // Show Save Niche button only for fresh job reports (not niche-mode)
+      if (!NICHE_ID && JOB_ID) {
+        document.getElementById("saveNicheBtn").classList.remove("hidden");
+      }
+    }
+
+    async function saveNiche() {
+      const btn = document.getElementById("saveNicheBtn");
+      btn.disabled = true;
+      btn.textContent = "Saving…";
+      try {
+        const fd = new FormData();
+        fd.append("topic", TOPIC);
+        fd.append("job_id", JOB_ID);
+        const res = await fetch("/niches", { method: "POST", body: fd });
+        if (res.ok) {
+          btn.textContent = "✓ Saved";
+          btn.classList.add("saved");
+        } else {
+          btn.textContent = "＋ Save Niche";
+          btn.disabled = false;
+        }
+      } catch {
+        btn.textContent = "＋ Save Niche";
+        btn.disabled = false;
+      }
+    }
+
+    function toggleDropdown(id, event) {
+      const panel = document.getElementById(id);
+      const toggle = document.getElementById("toggle-" + id);
+      if (!panel) return;
+      const isOpen = !panel.classList.contains("hidden");
+      panel.classList.toggle("hidden", isOpen);
+      if (toggle) toggle.textContent = isOpen ? "▾" : "▴";
+    }
+
+    function copySuggestion(btn, idx) {
+      const row = btn.closest(".title-suggestion-row");
+      const text = row ? row.dataset.title : "";
+      navigator.clipboard.writeText(text).then(() => {
+        const msg = document.getElementById(`sc-${idx}`);
+        msg.classList.remove("hidden");
+        setTimeout(() => msg.classList.add("hidden"), 2000);
+      });
+    }
+
+    function fmtDuration(seconds) {
+      if (!seconds) return "—";
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return s > 0 ? `${m}m ${s}s` : `${m}m`;
+    }
+
+    function fmtViews(n) {
+      if (!n) return "0";
+      if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+      if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
+      return n.toLocaleString();
+    }
+
+    function escHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    loadReport();
+
+    // --- Create a Post bar ---
+    function updateCreateBar() {
+      const checked = document.querySelectorAll(".video-select-cb:checked");
+      const bar = document.getElementById("createPostBar");
+      const countEl = document.getElementById("createPostCount");
+      const link = document.getElementById("createPostLink");
+
+      const n = checked.length;
+      countEl.textContent = n === 0 ? "No videos selected" : `${n} video${n > 1 ? "s" : ""} selected`;
+
+      const titles = Array.from(checked).map(cb => ({
+        title: cb.dataset.title,
+        description: cb.dataset.description || "",
+        thumbnail_url: cb.dataset.thumbnail || "",
+      }));
+      const params = new URLSearchParams({ job_id: JOB_ID, titles: JSON.stringify(titles) });
+      link.href = `/create-post?${params.toString()}`;
+
+      bar.classList.toggle("bar-has-selection", n > 0);
+    }
+  </script>
+
+  <!-- Sticky Create a Post bar -->
+  <div id="createPostBar" class="create-post-bar">
+    <span id="createPostCount" class="create-post-count">No videos selected</span>
+    <a id="createPostLink" href="#" class="btn create-post-btn">✦ Create a Post</a>
+  </div>
+
+</body>
+</html>
