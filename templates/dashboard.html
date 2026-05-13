@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — YouTube Trend Analyzer</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+</head>
+<body class="report-page">
+
+  <header class="report-header">
+    <div class="header-inner">
+      <a href="/" class="back-link">← New Analysis</a>
+      <div class="header-title">
+        <span class="logo-sm">✦</span>
+        <h1>My Niches</h1>
+      </div>
+      <span></span>
+    </div>
+  </header>
+
+  <main class="dashboard-main">
+
+    <div id="emptyState" class="empty-state hidden">
+      <div class="empty-icon">📂</div>
+      <p class="empty-title">No niches saved yet</p>
+      <p class="empty-desc">Run an analysis and click "＋ Save Niche" from the report page to track it here.</p>
+      <a href="/" class="btn">Start an Analysis</a>
+    </div>
+
+    <div id="nichesGrid" class="niches-grid"></div>
+
+    <div class="dashboard-add-wrap">
+      <a href="/" class="btn btn-outline">＋ Add Niche</a>
+    </div>
+
+  </main>
+
+  <script>
+    let niches = [];
+    let sortable = null;
+
+    async function loadNiches() {
+      const res = await fetch("/niches");
+      niches = await res.json();
+      renderNiches();
+    }
+
+    function renderNiches() {
+      const grid = document.getElementById("nichesGrid");
+      const empty = document.getElementById("emptyState");
+
+      if (niches.length === 0) {
+        grid.innerHTML = "";
+        empty.classList.remove("hidden");
+        document.querySelector(".dashboard-add-wrap").classList.add("hidden");
+        return;
+      }
+
+      empty.classList.add("hidden");
+      document.querySelector(".dashboard-add-wrap").classList.remove("hidden");
+      grid.innerHTML = niches.map(n => buildCard(n)).join("");
+
+      // Wire up inline rename inputs
+      niches.forEach(n => {
+        const input = document.getElementById(`rename-${n.id}`);
+        if (input) {
+          input.addEventListener("keydown", e => {
+            if (e.key === "Enter") { e.preventDefault(); confirmRename(n.id); }
+            if (e.key === "Escape") cancelRename(n.id);
+          });
+          input.addEventListener("blur", () => confirmRename(n.id));
+        }
+      });
+
+      // Drag-to-reorder
+      if (sortable) sortable.destroy();
+      sortable = Sortable.create(grid, {
+        handle: ".drag-handle",
+        animation: 150,
+        onEnd: reorderSave,
+      });
+    }
+
+    function buildCard(n) {
+      const s = n.summary || {};
+      const refreshed = n.last_refreshed
+        ? new Date(n.last_refreshed).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+        : "Never";
+      const engPct = s.avg_engagement_rate != null
+        ? (s.avg_engagement_rate * 100).toFixed(2) + "% eng"
+        : "";
+
+      const topVideoTitles = [];  // populated after fetch when needed
+
+      return `
+        <div class="niche-card ${n.refreshing ? "refreshing" : ""}" data-id="${n.id}">
+          ${n.refreshing ? `<div class="niche-refreshing-overlay"><div class="spinner"></div><span>Refreshing…</span></div>` : ""}
+          <div class="niche-card-top">
+            <span class="drag-handle">⠿</span>
+            <div class="niche-name-wrap">
+              <span class="niche-name" id="name-${n.id}" ondblclick="startRename('${n.id}')">${escHtml(n.name)}</span>
+              <input class="niche-rename-input hidden" id="rename-${n.id}" value="${escHtml(n.name)}" />
+              <button class="icon-btn rename-btn" title="Rename" onclick="startRename('${n.id}')">✎</button>
+            </div>
+          </div>
+
+          <div class="niche-summary">
+            ${s.top_keyword ? `<span class="niche-stat accent">${escHtml(s.top_keyword)}</span>` : ""}
+            ${s.total_videos ? `<span class="niche-stat">${s.total_videos} videos</span>` : ""}
+            ${s.top_channel ? `<span class="niche-stat">${escHtml(s.top_channel)}</span>` : ""}
+            ${engPct ? `<span class="niche-stat">${engPct}</span>` : ""}
+          </div>
+
+          <div class="niche-meta">Last refreshed: ${refreshed}</div>
+
+          <div class="niche-actions">
+            <a href="/niche-report/${n.id}" class="btn btn-sm">View Report</a>
+            <button class="btn btn-sm btn-outline" onclick="refreshNiche('${n.id}')">Refresh ↺</button>
+            <button class="btn btn-sm btn-accent" onclick="goCreatePost('${n.id}')">✦ Create a Post</button>
+            <button class="icon-btn delete-btn" title="Delete" onclick="deleteNiche('${n.id}')">🗑</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- Rename ---
+    function startRename(id) {
+      document.getElementById(`name-${id}`).classList.add("hidden");
+      const input = document.getElementById(`rename-${id}`);
+      input.classList.remove("hidden");
+      input.focus();
+      input.select();
+    }
+
+    async function confirmRename(id) {
+      const input = document.getElementById(`rename-${id}`);
+      if (!input || input.classList.contains("hidden")) return;
+      const newName = input.value.trim();
+      if (!newName) { cancelRename(id); return; }
+
+      const niche = niches.find(n => n.id === id);
+      if (niche && newName === niche.name) { cancelRename(id); return; }
+
+      input.classList.add("hidden");
+      document.getElementById(`name-${id}`).textContent = newName;
+      document.getElementById(`name-${id}`).classList.remove("hidden");
+
+      await fetch(`/niches/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (niche) niche.name = newName;
+    }
+
+    function cancelRename(id) {
+      const input = document.getElementById(`rename-${id}`);
+      const niche = niches.find(n => n.id === id);
+      if (input && niche) input.value = niche.name;
+      if (input) input.classList.add("hidden");
+      const nameEl = document.getElementById(`name-${id}`);
+      if (nameEl) nameEl.classList.remove("hidden");
+    }
+
+    // --- Refresh ---
+    async function refreshNiche(id) {
+      await fetch(`/niches/${id}/refresh`, { method: "POST" });
+      // Mark card as refreshing locally and start polling
+      const niche = niches.find(n => n.id === id);
+      if (niche) niche.refreshing = true;
+      renderNiches();
+      pollRefresh(id);
+    }
+
+    function pollRefresh(id) {
+      const interval = setInterval(async () => {
+        const res = await fetch("/niches");
+        const updated = await res.json();
+        const niche = updated.find(n => n.id === id);
+        if (!niche || !niche.refreshing) {
+          niches = updated;
+          renderNiches();
+          clearInterval(interval);
+        }
+      }, 5000);
+    }
+
+    // --- Delete ---
+    async function deleteNiche(id) {
+      const niche = niches.find(n => n.id === id);
+      if (!confirm(`Delete "${niche ? niche.name : id}"? This cannot be undone.`)) return;
+      await fetch(`/niches/${id}`, { method: "DELETE" });
+      niches = niches.filter(n => n.id !== id);
+      renderNiches();
+    }
+
+    // --- Create Post ---
+    async function goCreatePost(nicheId) {
+      const res = await fetch(`/niches/${nicheId}/result`);
+      if (!res.ok) { window.location.href = "/create-post"; return; }
+      const data = await res.json();
+      const topVideos = (data.top_videos_by_views || []).slice(0, 5).map(v => v.title);
+      const params = new URLSearchParams({ titles: JSON.stringify(topVideos) });
+      window.location.href = `/create-post?${params.toString()}`;
+    }
+
+    // --- Reorder ---
+    async function reorderSave() {
+      const cards = document.querySelectorAll(".niche-card[data-id]");
+      const ids = Array.from(cards).map(c => c.dataset.id);
+      await fetch("/niches/reorder", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+    }
+
+    function escHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    loadNiches();
+  </script>
+
+</body>
+</html>

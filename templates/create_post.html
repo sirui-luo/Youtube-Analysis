@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create a Post — YouTube Trend Analyzer</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+</head>
+<body class="report-page">
+
+  <header class="report-header">
+    <div class="header-inner">
+      <a id="backLink" href="/" class="back-link">← Back to Report</a>
+      <div class="header-title">
+        <span class="logo-sm">✦</span>
+        <h1>Create a Post</h1>
+      </div>
+      <a href="/dashboard" class="nav-link">Dashboard</a>
+    </div>
+  </header>
+
+  <main class="create-post-main">
+
+    <!-- Reference Videos -->
+    <section class="card full-width" id="refSection">
+      <h2 class="card-title">Reference Videos</h2>
+      <div id="refContent"></div>
+    </section>
+
+    <!-- Photo Upload -->
+    <section class="card full-width">
+      <h2 class="card-title">Your Photos</h2>
+      <p class="card-desc" id="photoCapHint">Upload up to 10 photos (Instagram) or 9 (RedNote).</p>
+
+      <div class="photo-dropzone" id="dropzone">
+        <input type="file" id="photoInput" accept="image/*" multiple hidden />
+        <div class="dropzone-inner" onclick="document.getElementById('photoInput').click()">
+          <span class="dropzone-icon">📷</span>
+          <span class="dropzone-text">Click to upload photos, or drag & drop here</span>
+          <span class="dropzone-hint" id="dropzoneHint">Max 10 photos</span>
+        </div>
+      </div>
+
+      <div id="photoPreviewGrid" class="photo-preview-grid"></div>
+    </section>
+
+    <!-- Platform -->
+    <section class="card full-width">
+      <h2 class="card-title">Platform</h2>
+      <p class="card-desc">We'll generate all variants at once — you pick the one you like.</p>
+
+      <div class="platform-toggle" role="group">
+        <button type="button" class="platform-btn active" data-platform="instagram" onclick="selectPlatform('instagram')">
+          📸 Instagram
+        </button>
+        <button type="button" class="platform-btn" data-platform="rednote" onclick="selectPlatform('rednote')">
+          🌸 RedNote (小红书)
+        </button>
+      </div>
+      <p id="platformHint" class="platform-hint">3 variants: Aesthetic · Engagement · Casual</p>
+    </section>
+
+    <!-- Ideas -->
+    <section class="card full-width">
+      <h2 class="card-title">Your Ideas <span class="optional-tag">optional</span></h2>
+      <textarea
+        id="ideasInput"
+        class="ideas-textarea"
+        placeholder="e.g. morning GRWM, soft girl aesthetic, café hop in Shibuya..."
+        rows="3"
+      ></textarea>
+    </section>
+
+    <!-- Generate Button -->
+    <div class="generate-wrap">
+      <button id="generateBtn" class="btn btn-large" onclick="generatePost()">
+        ✦ Generate Variants
+      </button>
+      <p id="generateError" class="generate-error hidden"></p>
+    </div>
+
+    <!-- Variants Section -->
+    <section id="variantsSection" class="card full-width hidden">
+      <div class="variants-header">
+        <h2 class="card-title">Choose a Variant</h2>
+        <button class="copy-btn" onclick="regenerateAll()">↺ Regenerate All</button>
+      </div>
+      <div id="variantsList" class="variants-list"></div>
+    </section>
+
+    <!-- Result Section (populated when user clicks "Use this one") -->
+    <section id="resultSection" class="card full-width hidden">
+      <h2 class="card-title">Your Post</h2>
+
+      <!-- Instagram: cover slide text -->
+      <div id="coverSlideWrap" class="result-caption-wrap hidden">
+        <div class="result-caption-label">Cover Slide Text <span class="optional-tag">tap to edit</span></div>
+        <div id="coverSlideBox" class="caption-box cover-slide-box" contenteditable="true"></div>
+        <button class="copy-btn" onclick="copyCoverSlide()">Copy Cover Text</button>
+        <span id="coverCopiedMsg" class="copied-msg hidden">Copied!</span>
+      </div>
+
+      <!-- RedNote: title -->
+      <div id="rednoteTitleWrap" class="result-caption-wrap hidden">
+        <div class="result-caption-label">标题 Title</div>
+        <div id="rednoteTitleBox" class="caption-box rednote-title-box" contenteditable="true"></div>
+      </div>
+
+      <div class="result-caption-wrap">
+        <div class="result-caption-label" id="captionLabel">Caption <span class="optional-tag">tap to edit</span></div>
+        <div id="captionBox" class="caption-box" contenteditable="true"></div>
+        <button class="copy-btn" id="copyCaptionBtn" onclick="copyCaption()">Copy Caption</button>
+        <span id="copiedMsg" class="copied-msg hidden">Copied!</span>
+      </div>
+
+      <div class="result-photos-wrap">
+        <div class="result-photos-label">Photo Order <span class="optional-tag">drag to reorder</span></div>
+        <div id="resultPhotoGrid" class="result-photo-grid"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox hidden" onclick="closeLightbox()">
+    <img id="lightboxImg" class="lightbox-img" src="" alt="" onclick="event.stopPropagation()" />
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+  </div>
+
+  <script>
+    // --- Init ---
+    const JOB_ID = "{{ job_id }}";
+    const TITLES_JSON = {{ titles_json | safe }};
+    let selectedPhotos = [];
+    let currentPlatform = "instagram";
+    let sortableInstance = null;
+
+    // Back link
+    if (JOB_ID) {
+      document.getElementById("backLink").href = `/report/${JOB_ID}`;
+    }
+
+    // Reference videos section
+    (function initRefSection() {
+      const titles = Array.isArray(TITLES_JSON) ? TITLES_JSON : [];
+      const el = document.getElementById("refContent");
+      if (titles.length === 0) {
+        el.innerHTML = `<p class="ref-notice">⚠️ No reference videos selected — caption will be based on your photos and ideas only.</p>`;
+      } else {
+        el.innerHTML = `<ul class="ref-list">${titles.map(t => `<li class="ref-item">▶ ${escHtml(typeof t === "object" ? t.title : t)}</li>`).join("")}</ul>`;
+      }
+    })();
+
+    // --- Platform selection ---
+    function selectPlatform(p) {
+      currentPlatform = p;
+      document.querySelectorAll(".platform-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.platform === p);
+      });
+      document.getElementById("platformHint").textContent =
+        p === "instagram" ? "3 variants: Aesthetic · Engagement · Casual" : "2 variants: 图文 · 种草";
+      updatePhotoCap();
+    }
+
+    function updatePhotoCap() {
+      const cap = currentPlatform === "rednote" ? 9 : 10;
+      document.getElementById("photoCapHint").textContent = `Upload up to ${cap} photos.`;
+      document.getElementById("dropzoneHint").textContent = `Max ${cap} photos`;
+      if (selectedPhotos.length > cap) {
+        selectedPhotos = selectedPhotos.slice(0, cap);
+        renderPhotoPreview();
+      }
+    }
+
+    // --- Photo upload ---
+    const dropzone = document.getElementById("dropzone");
+    const photoInput = document.getElementById("photoInput");
+
+    dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.classList.add("drag-over"); });
+    dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag-over"));
+    dropzone.addEventListener("drop", e => {
+      e.preventDefault();
+      dropzone.classList.remove("drag-over");
+      addFiles(Array.from(e.dataTransfer.files));
+    });
+
+    photoInput.addEventListener("change", () => {
+      addFiles(Array.from(photoInput.files));
+      photoInput.value = "";
+    });
+
+    function addFiles(files) {
+      const cap = currentPlatform === "rednote" ? 9 : 10;
+      const remaining = cap - selectedPhotos.length;
+      const toAdd = files.filter(f => f.type.startsWith("image/")).slice(0, remaining);
+      selectedPhotos = selectedPhotos.concat(toAdd);
+      renderPhotoPreview();
+    }
+
+    function renderPhotoPreview() {
+      const grid = document.getElementById("photoPreviewGrid");
+      grid.innerHTML = "";
+      selectedPhotos.forEach((file, i) => {
+        const url = URL.createObjectURL(file);
+        const div = document.createElement("div");
+        div.className = "photo-thumb-wrap";
+        div.innerHTML = `
+          <img class="photo-thumb-img" src="${url}" alt="photo ${i+1}" />
+          <span class="photo-order-badge">${i + 1}</span>
+          <button class="photo-remove-btn" onclick="removePhoto(${i})" title="Remove">×</button>
+        `;
+        grid.appendChild(div);
+      });
+    }
+
+    function removePhoto(idx) {
+      selectedPhotos.splice(idx, 1);
+      renderPhotoPreview();
+    }
+
+    // --- Generate variants ---
+    async function generatePost() {
+      if (selectedPhotos.length === 0) {
+        showError("Please upload at least one photo.");
+        return;
+      }
+
+      const btn = document.getElementById("generateBtn");
+      btn.disabled = true;
+      btn.textContent = "Generating…";
+      hideError();
+      document.getElementById("variantsSection").classList.add("hidden");
+      document.getElementById("resultSection").classList.add("hidden");
+
+      try {
+        const formData = new FormData();
+        selectedPhotos.forEach(f => formData.append("photos", f));
+        formData.append("ideas", document.getElementById("ideasInput").value);
+        formData.append("platform", currentPlatform);
+        formData.append("video_titles", JSON.stringify(Array.isArray(TITLES_JSON) ? TITLES_JSON : []));
+
+        const res = await fetch("/generate-variants", { method: "POST", body: formData });
+        const variants = await res.json();
+
+        if (!res.ok) {
+          showError((variants && variants.error) || "Generation failed. Please try again.");
+          return;
+        }
+
+        renderVariants(variants);
+      } catch (err) {
+        showError("Network error: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "✦ Generate Variants";
+      }
+    }
+
+    function regenerateAll() {
+      generatePost();
+    }
+
+    // --- Render variant cards ---
+    function renderVariants(variants) {
+      const list = document.getElementById("variantsList");
+      list.innerHTML = "";
+
+      variants.forEach((v, idx) => {
+        const card = document.createElement("div");
+        card.className = "variant-card";
+        card.id = `variant-${idx}`;
+
+        if (v.error) {
+          card.innerHTML = `
+            <div class="variant-tone-badge">Variant ${idx + 1}</div>
+            <p class="variant-error">Failed to generate: ${escHtml(v.error)}</p>
+          `;
+          list.appendChild(card);
+          return;
+        }
+
+        // Mini photo strip in suggested order
+        const order = v.photo_order || selectedPhotos.map((_, i) => i);
+        const stripHtml = order.slice(0, 6).map(photoIdx => {
+          const file = selectedPhotos[photoIdx];
+          if (!file) return "";
+          const url = URL.createObjectURL(file);
+          return `<img class="variant-strip-thumb" src="${url}" alt="" />`;
+        }).join("");
+
+        const coverHtml = v.cover_slide_text
+          ? `<span class="variant-cover-inline">· ${escHtml(v.cover_slide_text)}</span>`
+          : "";
+        const titleHtml = v.title
+          ? `<div class="variant-rednote-title">${escHtml(v.title)}</div>`
+          : "";
+
+        card.innerHTML = `
+          <div class="variant-card-header">
+            <span class="variant-tone-badge">${escHtml(v.tone || `Variant ${idx + 1}`)}</span>
+            ${coverHtml}
+          </div>
+          ${titleHtml}
+          <p class="variant-caption">${escHtml(v.caption || v.body || "")}</p>
+          <div class="variant-photo-strip">${stripHtml}${order.length > 6 ? `<span class="variant-strip-more">+${order.length - 6}</span>` : ""}</div>
+          <div class="variant-actions">
+            <button class="copy-btn" onclick="copyVariant(${idx})">Copy</button>
+            <button class="btn variant-use-btn" onclick="useVariant(${idx})">Use this one</button>
+          </div>
+          <span class="variant-copied-msg hidden" id="vcopy-${idx}">Copied!</span>
+        `;
+
+        // Store variant data on the element for later use
+        card._variantData = v;
+        list.appendChild(card);
+      });
+
+      document.getElementById("variantsSection").classList.remove("hidden");
+      document.getElementById("variantsSection").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function useVariant(idx) {
+      // Highlight selected card, clear others
+      document.querySelectorAll(".variant-card").forEach((c, i) => {
+        c.classList.toggle("selected", i === idx);
+      });
+
+      const card = document.getElementById(`variant-${idx}`);
+      const v = card._variantData;
+      if (v) renderResult(v);
+    }
+
+    function copyVariant(idx) {
+      const card = document.getElementById(`variant-${idx}`);
+      const v = card._variantData;
+      if (!v) return;
+      navigator.clipboard.writeText(v.caption || "").then(() => {
+        const msg = document.getElementById(`vcopy-${idx}`);
+        msg.classList.remove("hidden");
+        setTimeout(() => msg.classList.add("hidden"), 2000);
+      });
+    }
+
+    // --- Render selected result (draggable grid) ---
+    function renderResult(data) {
+      const captionBox = document.getElementById("captionBox");
+      captionBox.textContent = data.caption || data.body || "";
+
+      // Instagram cover slide text
+      const coverWrap = document.getElementById("coverSlideWrap");
+      const coverBox = document.getElementById("coverSlideBox");
+      if (data.cover_slide_text) {
+        coverBox.textContent = data.cover_slide_text;
+        coverWrap.classList.remove("hidden");
+      } else {
+        coverWrap.classList.add("hidden");
+      }
+
+      // RedNote title
+      const titleWrap = document.getElementById("rednoteTitleWrap");
+      const titleBox = document.getElementById("rednoteTitleBox");
+      const captionLabel = document.getElementById("captionLabel");
+      const copyCaptionBtn = document.getElementById("copyCaptionBtn");
+      if (data.title) {
+        titleBox.textContent = data.title;
+        titleWrap.classList.remove("hidden");
+        captionLabel.innerHTML = `正文 Body <span class="optional-tag">tap to edit</span>`;
+        copyCaptionBtn.textContent = "Copy All";
+      } else {
+        titleWrap.classList.add("hidden");
+        captionLabel.innerHTML = `Caption <span class="optional-tag">tap to edit</span>`;
+        copyCaptionBtn.textContent = "Copy Caption";
+      }
+
+      const order = data.photo_order || selectedPhotos.map((_, i) => i);
+      const notes = data.photo_notes || [];
+      const grid = document.getElementById("resultPhotoGrid");
+      grid.innerHTML = "";
+
+      if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null; }
+
+      order.forEach((photoIdx, slotIdx) => {
+        const file = selectedPhotos[photoIdx];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        const div = document.createElement("div");
+        div.className = "result-photo-item";
+        div.dataset.idx = photoIdx;
+        div.innerHTML = `
+          <img class="result-photo-img" src="${url}" alt="photo ${slotIdx + 1}" onclick="openLightbox('${url}')" />
+          <span class="result-order-badge">${slotIdx + 1}</span>
+          ${notes[slotIdx] ? `<span class="result-photo-note">${escHtml(notes[slotIdx])}</span>` : ""}
+        `;
+        grid.appendChild(div);
+      });
+
+      sortableInstance = Sortable.create(grid, {
+        animation: 150,
+        onEnd: () => {
+          grid.querySelectorAll(".result-photo-item").forEach((item, i) => {
+            item.querySelector(".result-order-badge").textContent = i + 1;
+          });
+        }
+      });
+
+      document.getElementById("resultSection").classList.remove("hidden");
+      document.getElementById("resultSection").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // --- Copy caption (result section) ---
+    function copyCaption() {
+      const titleBox = document.getElementById("rednoteTitleBox");
+      const titleWrap = document.getElementById("rednoteTitleWrap");
+      const body = document.getElementById("captionBox").innerText;
+      const text = (!titleWrap.classList.contains("hidden") && titleBox.innerText)
+        ? titleBox.innerText + "\n\n" + body
+        : body;
+      navigator.clipboard.writeText(text).then(() => {
+        const msg = document.getElementById("copiedMsg");
+        msg.classList.remove("hidden");
+        setTimeout(() => msg.classList.add("hidden"), 2000);
+      });
+    }
+
+    function copyCoverSlide() {
+      const text = document.getElementById("coverSlideBox").innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const msg = document.getElementById("coverCopiedMsg");
+        msg.classList.remove("hidden");
+        setTimeout(() => msg.classList.add("hidden"), 2000);
+      });
+    }
+
+    // --- Lightbox ---
+    function openLightbox(src) {
+      document.getElementById("lightboxImg").src = src;
+      document.getElementById("lightbox").classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeLightbox() {
+      document.getElementById("lightbox").classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") closeLightbox();
+    });
+
+    function showError(msg) {
+      const el = document.getElementById("generateError");
+      el.textContent = msg;
+      el.classList.remove("hidden");
+    }
+
+    function hideError() {
+      document.getElementById("generateError").classList.add("hidden");
+    }
+
+    function escHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+  </script>
+
+</body>
+</html>

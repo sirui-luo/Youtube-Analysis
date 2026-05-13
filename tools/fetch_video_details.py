@@ -114,16 +114,21 @@ def parse_video_item(item: dict, source_map: dict, thumbnail_map: dict) -> dict:
         "tags": snippet.get("tags", []),
         "category_id": snippet.get("categoryId", ""),
         "source_keyword": source_map.get(vid_id, ""),
+        "description": snippet.get("description", ""),
     }
 
 
-def main():
-    if not os.path.exists(config.VIDEOS_RAW_PATH):
+def main(work_dir=None):
+    _work_dir = work_dir or config.TMP_DIR
+    _input_path = os.path.join(_work_dir, "videos_raw.json")
+    _output_path = os.path.join(_work_dir, "video_details.json")
+
+    if not os.path.exists(_input_path):
         raise FileNotFoundError(
-            f"Missing {config.VIDEOS_RAW_PATH} — run search_youtube.py first"
+            f"Missing {_input_path} — run search_youtube.py first"
         )
 
-    with open(config.VIDEOS_RAW_PATH) as f:
+    with open(_input_path) as f:
         raw = json.load(f)
 
     videos_raw = raw["videos"]
@@ -150,10 +155,10 @@ def main():
         "videos": video_details,
     }
 
-    with open(config.VIDEO_DETAILS_PATH, "w") as f:
+    with open(_output_path, "w") as f:
         json.dump(output, f, indent=2)
 
-    log.info(f"Saved to {config.VIDEO_DETAILS_PATH}")
+    log.info(f"Saved to {_output_path}")
     return output
 
 

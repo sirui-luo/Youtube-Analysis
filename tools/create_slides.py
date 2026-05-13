@@ -112,6 +112,7 @@ def add_text_box(
     color: dict = None,
     alignment: str = "START",
     element_id: str = None,
+    url: str = None,
 ) -> list[dict]:
     if color is None:
         color = TEXT_DARK
@@ -162,6 +163,15 @@ def add_text_box(
             }
         },
     ]
+    if url:
+        requests.append({
+            "updateTextStyle": {
+                "objectId": obj_id,
+                "style": {"link": {"url": url}},
+                "textRange": {"type": "ALL"},
+                "fields": "link",
+            }
+        })
     return requests
 
 
@@ -242,10 +252,10 @@ def build_slide_01_cover(service, pid, slide_id, analysis, week_str):
     # Accent bar
     reqs += add_shape_rect(slide_id, 0, 0, 0.15, 5.625, ACCENT, "accent_bar")
     # Title
-    reqs += add_text_box(slide_id, "AI YouTube\nIndustry Report",
+    reqs += add_text_box(slide_id, "Fashion & Beauty\nYouTube Report",
                          0.4, 1.2, 7, 2, font_size=54, bold=True, color=WHITE, alignment="START")
     # Subtitle
-    reqs += add_text_box(slide_id, f"Week of {week_str}  •  AI & Automation Niche",
+    reqs += add_text_box(slide_id, f"Week of {week_str}  •  Fashion, Makeup & Beauty Niche",
                          0.4, 3.5, 8, 0.5, font_size=18, color={"red": 0.7, "green": 0.75, "blue": 0.85},
                          alignment="START")
     # Footer stat
@@ -290,41 +300,63 @@ def build_slide_02_exec_summary(service, pid, slide_id, analysis):
 
 def build_slide_03_top_videos(service, pid, slide_id, analysis):
     videos = analysis.get("top_videos_by_views", [])[:7]
+
+    # Column layout (x positions and widths, total usable = 9.6 inches)
+    COL_NUM   = (0.20, 0.35)   # x, w
+    COL_TITLE = (0.60, 5.10)
+    COL_CHAN  = (5.80, 2.30)
+    COL_VIEW  = (8.20, 1.05)
+    COL_ENG   = (9.30, 0.55)
+
+    ROW_START   = 1.18   # first data row y
+    ROW_SPACING = 0.60   # per row
+    ROW_H       = 0.52   # row background height
+    TEXT_OFF    = 0.06   # text y offset inside row
+
     reqs = [set_slide_bg(slide_id, WHITE)]
-    reqs += add_shape_rect(slide_id, 0, 0, 10, 0.9, DARK_BG)
-    reqs += add_text_box(slide_id, "Top Trending Videos This Week",
-                         0.3, 0.1, 9.4, 0.7, font_size=24, bold=True, color=WHITE)
-    reqs += add_text_box(slide_id, "Ranked by view count",
-                         7.5, 0.25, 2, 0.4, font_size=11, color={"red": 0.6, "green": 0.65, "blue": 0.75})
 
+    # Header band
+    reqs += add_shape_rect(slide_id, 0, 0, 10, 0.85, DARK_BG)
+    reqs += add_text_box(slide_id, "Top Trending Fashion & Beauty Videos",
+                         0.3, 0.08, 7.5, 0.68, font_size=22, bold=True, color=WHITE)
+
+    # Column header strip
+    reqs += add_shape_rect(slide_id, 0, 0.85, 10, 0.30, {"red": 0.92, "green": 0.93, "blue": 0.95})
+    reqs += add_text_box(slide_id, "TITLE", COL_TITLE[0], 0.87, COL_TITLE[1], 0.26,
+                         font_size=9, bold=True, color=TEXT_MUTED)
+    reqs += add_text_box(slide_id, "CHANNEL", COL_CHAN[0], 0.87, COL_CHAN[1], 0.26,
+                         font_size=9, bold=True, color=TEXT_MUTED)
+    reqs += add_text_box(slide_id, "VIEWS", COL_VIEW[0], 0.87, COL_VIEW[1], 0.26,
+                         font_size=9, bold=True, color=TEXT_MUTED, alignment="END")
+    reqs += add_text_box(slide_id, "ENG.", COL_ENG[0], 0.87, COL_ENG[1], 0.26,
+                         font_size=9, bold=True, color=TEXT_MUTED, alignment="END")
+
+    # Data rows
     for i, v in enumerate(videos):
-        y = 1.0 + i * 0.6
-        # Row bg (alternating)
+        y = ROW_START + i * ROW_SPACING
         if i % 2 == 0:
-            reqs += add_shape_rect(slide_id, 0.2, y, 9.6, 0.55, LIGHT_GREY, f"row_bg_{i}")
+            reqs += add_shape_rect(slide_id, 0.15, y, 9.7, ROW_H,
+                                   LIGHT_GREY, f"row_bg_{i}")
         views_str = f"{v['view_count']:,}"
-        eng_str = f"{v['engagement_rate']:.1%}"
-        fmt_str = v["format"].upper()
-        reqs += add_text_box(slide_id, f"{i+1}.", 0.25, y + 0.05, 0.4, 0.45,
-                             font_size=12, bold=True, color=ACCENT)
-        reqs += add_text_box(slide_id, v["title"][:65], 0.65, y + 0.05, 5.8, 0.45,
-                             font_size=11, color=TEXT_DARK)
-        reqs += add_text_box(slide_id, v["channel_title"][:30], 6.45, y + 0.05, 1.8, 0.45,
-                             font_size=10, color=TEXT_MUTED)
-        reqs += add_text_box(slide_id, views_str, 8.25, y + 0.05, 1.0, 0.45,
-                             font_size=11, bold=True, color=TEXT_DARK, alignment="END")
-        reqs += add_text_box(slide_id, eng_str, 9.25, y + 0.05, 0.7, 0.45,
-                             font_size=10, color=ACCENT, alignment="END")
+        eng_str   = f"{v['engagement_rate']:.1%}"
+        video_url   = f"https://www.youtube.com/watch?v={v['video_id']}"
+        channel_url = f"https://www.youtube.com/channel/{v['channel_id']}" if v.get("channel_id") else None
 
-    # Header row
-    reqs += add_text_box(slide_id, "Title", 0.65, 0.9, 5.8, 0.4, font_size=10,
-                         bold=True, color=TEXT_MUTED)
-    reqs += add_text_box(slide_id, "Channel", 6.45, 0.9, 1.8, 0.4, font_size=10,
-                         bold=True, color=TEXT_MUTED)
-    reqs += add_text_box(slide_id, "Views", 8.25, 0.9, 1.0, 0.4, font_size=10,
-                         bold=True, color=TEXT_MUTED, alignment="END")
-    reqs += add_text_box(slide_id, "Eng.", 9.25, 0.9, 0.7, 0.4, font_size=10,
-                         bold=True, color=TEXT_MUTED, alignment="END")
+        reqs += add_text_box(slide_id, f"{i+1}", COL_NUM[0], y + TEXT_OFF,
+                             COL_NUM[1], ROW_H - TEXT_OFF,
+                             font_size=11, bold=True, color=ACCENT, alignment="CENTER")
+        reqs += add_text_box(slide_id, v["title"][:58], COL_TITLE[0], y + TEXT_OFF,
+                             COL_TITLE[1], ROW_H - TEXT_OFF,
+                             font_size=11, color=ACCENT, url=video_url)
+        reqs += add_text_box(slide_id, v["channel_title"][:28], COL_CHAN[0], y + TEXT_OFF,
+                             COL_CHAN[1], ROW_H - TEXT_OFF,
+                             font_size=10, color=TEXT_MUTED, url=channel_url)
+        reqs += add_text_box(slide_id, views_str, COL_VIEW[0], y + TEXT_OFF,
+                             COL_VIEW[1], ROW_H - TEXT_OFF,
+                             font_size=11, bold=True, color=TEXT_DARK, alignment="END")
+        reqs += add_text_box(slide_id, eng_str, COL_ENG[0], y + TEXT_OFF,
+                             COL_ENG[1], ROW_H - TEXT_OFF,
+                             font_size=10, color=ACCENT, alignment="END")
 
     batch_update(service, pid, reqs)
     log.info("  Slide 3: Top Videos")
@@ -368,11 +400,14 @@ def build_slide_09_opportunities(service, pid, slide_id, analysis):
                          0.3, 0.9, 9.4, 0.4, font_size=12, color=TEXT_MUTED)
 
     if gaps:
-        for i, gap in enumerate(gaps):
-            y = 1.45 + i * 0.65
-            reqs += add_shape_rect(slide_id, 0.3, y, 0.5, 0.45, ACCENT, f"dot_{i}")
-            reqs += add_text_box(slide_id, gap.title(), 0.95, y + 0.04, 8.5, 0.45,
-                                 font_size=15, color=TEXT_DARK)
+        for i, gap in enumerate(gaps[:10]):
+            col = i % 2
+            row = i // 2
+            x = 0.3 + col * 4.8
+            y = 1.45 + row * 0.75
+            reqs += add_shape_rect(slide_id, x, y, 0.4, 0.4, ACCENT, f"dot_{i}")
+            reqs += add_text_box(slide_id, gap.title(), x + 0.55, y + 0.04, 3.9, 0.4,
+                                 font_size=14, color=TEXT_DARK)
     else:
         reqs += add_text_box(slide_id, "All tracked keywords have good coverage this week.",
                              0.5, 2.5, 9, 0.6, font_size=16, color=TEXT_MUTED, alignment="CENTER")
@@ -387,7 +422,7 @@ def build_slide_10_recommendations(service, pid, slide_id, analysis):
     reqs += add_shape_rect(slide_id, 0, 0, 0.15, 5.625, ACCENT, "left_bar")
     reqs += add_text_box(slide_id, "Recommendations for Your Channel",
                          0.4, 0.15, 9.2, 0.7, font_size=24, bold=True, color=WHITE)
-    reqs += add_text_box(slide_id, "Based on this week's AI niche analysis",
+    reqs += add_text_box(slide_id, "Based on this week's fashion & beauty niche analysis",
                          0.4, 0.8, 9.2, 0.4, font_size=13,
                          color={"red": 0.55, "green": 0.6, "blue": 0.7})
 
@@ -441,7 +476,7 @@ def main(spreadsheet_id: str = None, chart_ids: dict = None):
                 log.warning(f"Could not delete previous presentation {prev_id}: {e}")
 
     week_str = datetime.now(timezone.utc).strftime("%B %d, %Y")
-    pres_title = f"AI YouTube Industry Report — Week of {week_str}"
+    pres_title = f"Fashion & Beauty YouTube Report — Week of {week_str}"
 
     log.info(f"Creating presentation: '{pres_title}'")
     presentation = slides_service.presentations().create(
@@ -468,11 +503,11 @@ def main(spreadsheet_id: str = None, chart_ids: dict = None):
 
     build_chart_slide(slides_service, pid, slide_ids[3],
                       "Trending Topics & Keywords",
-                      "Most frequently mentioned terms in AI video titles this week",
+                      "Most frequently mentioned terms in fashion & beauty video titles this week",
                       spreadsheet_id, chart_ids.get("keywords_bar"))
 
     build_chart_slide(slides_service, pid, slide_ids[4],
-                      "Top Channels in AI Niche",
+                      "Top Channels in Fashion & Beauty Niche",
                       "Ranked by total channel view count",
                       spreadsheet_id, chart_ids.get("channels_bar"))
 
@@ -483,12 +518,12 @@ def main(spreadsheet_id: str = None, chart_ids: dict = None):
 
     build_chart_slide(slides_service, pid, slide_ids[6],
                       "Content Format Breakdown",
-                      "Distribution of Shorts vs mid-form vs long-form AI content",
+                      "Distribution of Shorts vs mid-form vs long-form fashion & beauty content",
                       spreadsheet_id, chart_ids.get("format_pie"))
 
     build_chart_slide(slides_service, pid, slide_ids[7],
                       "Upload Timing Patterns",
-                      "Average views by day of week for AI content",
+                      "Average views by day of week for fashion & beauty content",
                       spreadsheet_id, chart_ids.get("timing_bar"))
 
     build_slide_09_opportunities(slides_service, pid, slide_ids[8], analysis)

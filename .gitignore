@@ -6,6 +6,9 @@ token.json
 # Temporary processing files
 .tmp/
 
+# Saved niches (user data, not source code)
+niches.json
+
 # Python
 __pycache__/
 *.py[cod]
@@ -18,3 +21,11 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# IDE / tooling
+.Rhistory
+.agents/
+.claude/
+skills-lock.json
+=2.2.0
+sirui-luo-pitch-deck.html

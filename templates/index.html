@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Trend Analyzer</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="index-page">
+
+  <nav class="index-nav">
+    <a href="/dashboard" class="nav-link">Dashboard</a>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="logo">▶</div>
+      <h1>YouTube Trend Analyzer</h1>
+      <p class="subtitle">Enter any topic and get instant insights — top videos, trending keywords, content gaps, and actionable recommendations.</p>
+
+      <form id="analyzeForm" class="search-form">
+        <div class="input-row">
+          <input
+            type="text"
+            id="topicInput"
+            name="topic"
+            placeholder="e.g. french girl aesthetic, home gym setup, sourdough bread..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit" id="runBtn">Analyze</button>
+        </div>
+        <p class="hint">Analysis takes 2–4 minutes. We'll search YouTube and generate insights just for your topic.</p>
+      </form>
+
+      <!-- Progress section (hidden until run starts) -->
+      <div id="progressSection" class="progress-section hidden">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <p id="progressMsg" class="progress-msg">Starting...</p>
+        <ul id="progressLog" class="progress-log"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STEPS = ["expand", "search", "details", "channels", "analyze", "done"];
+    const STEP_PCT = { expand: 10, search: 35, details: 55, channels: 70, analyze: 90, done: 100, error: 100 };
+
+    const form = document.getElementById("analyzeForm");
+    const runBtn = document.getElementById("runBtn");
+    const progressSection = document.getElementById("progressSection");
+    const progressBar = document.getElementById("progressBar");
+    const progressMsg = document.getElementById("progressMsg");
+    const progressLog = document.getElementById("progressLog");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const topic = document.getElementById("topicInput").value.trim();
+      if (!topic) return;
+
+      runBtn.disabled = true;
+      runBtn.textContent = "Running...";
+      progressSection.classList.remove("hidden");
+      progressLog.innerHTML = "";
+      setProgress(5, "Kicking off pipeline...");
+
+      // Start the job
+      const formData = new FormData();
+      formData.append("topic", topic);
+      const res = await fetch("/analyze", { method: "POST", body: formData });
+      const { job_id, error } = await res.json();
+
+      if (error) {
+        setProgress(100, "Error: " + error);
+        runBtn.disabled = false;
+        runBtn.textContent = "Analyze";
+        return;
+      }
+
+      // Stream progress via SSE
+      const evtSource = new EventSource(`/stream/${job_id}`);
+      evtSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const pct = STEP_PCT[data.step] || 50;
+        setProgress(pct, data.message);
+        addLog(data.step, data.message);
+
+        if (data.step === "done") {
+          evtSource.close();
+          setTimeout(() => {
+            window.location.href = `/report/${job_id}`;
+          }, 600);
+        } else if (data.step === "error") {
+          evtSource.close();
+          progressMsg.style.color = "#ef4444";
+          runBtn.disabled = false;
+          runBtn.textContent = "Try Again";
+        }
+      };
+      evtSource.onerror = () => {
+        evtSource.close();
+        setProgress(100, "Connection lost. Please try again.");
+        runBtn.disabled = false;
+        runBtn.textContent = "Try Again";
+      };
+    });
+
+    function setProgress(pct, msg) {
+      progressBar.style.width = pct + "%";
+      progressMsg.textContent = msg;
+    }
+
+    function addLog(step, msg) {
+      const li = document.createElement("li");
+      li.textContent = msg;
+      li.className = "log-item";
+      progressLog.appendChild(li);
+      progressLog.scrollTop = progressLog.scrollHeight;
+    }
+  </script>
+</body>
+</html>
