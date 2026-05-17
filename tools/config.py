@@ -53,19 +53,16 @@ SEED_CHANNEL_HANDLES = [
     "elana jadallah",       # lifestyle & fashion
 ]
 
-# Title blocklist: videos whose titles contain any of these terms are discarded.
+# Title blocklist: only universal spam/irrelevant terms that hurt every topic.
+# Do NOT add topic-specific terms here (e.g. "cooking", "fitness") — those
+# would silently break searches on those topics.
 TITLE_BLOCKLIST = [
-    "gaming", "minecraft", "fortnite", "cooking", "recipe", "baking",
-    "workout", "gym", "fitness", "bodybuilding", "weight loss",
-    "sports", "football", "basketball", "soccer",
-    "tech review", "unboxing tech", "iphone", "android",
-    "baby", "pregnancy", "kids", "children", "prank",
-    "horror", "scary", "asmr", "mukbang",
+    "prank", "horror", "scary", "asmr",
 ]
 
 MAX_RESULTS_PER_KEYWORD = 10   # YouTube search.list max 50; keep low for quota
 MAX_RESULTS_PER_SEED_CHANNEL = 10  # Recent videos to fetch per seed channel
-LOOKBACK_DAYS = 7              # Only include videos published in the last N days
+LOOKBACK_DAYS = 14             # Only include videos published in the last N days
 TRENDING_REGION_CODE = "US"
 TRENDING_CATEGORY_ID = "26"    # YouTube category 26 = Howto & Style (disabled — too noisy)
 TRENDING_MAX_RESULTS = 50

@@ -68,8 +68,8 @@ def _simple_expand(topic: str) -> list[str]:
         "for beginners",
         "tips",
         "routine",
-        "aesthetic",
-        "outfit",
+        "review",
+        "guide",
     ]
     keywords = []
     for s in suffixes:
